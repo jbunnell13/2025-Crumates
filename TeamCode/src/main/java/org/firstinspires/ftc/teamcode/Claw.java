@@ -37,17 +37,17 @@ public class Claw {
             isAPressed = !isAPressed;
         }
          */
-        if(gamepad.x) {
+        if(gamepad.y) {
             setClawPosition(0);
         }
 
-        if (gamepad.y){
+        if (gamepad.x){
             setClawPosition(0.8);
         }
-        if (gamepad.a){
+        if (gamepad.b){
             setJointPosition(0);
         }
-        if(gamepad.b){
+        if(gamepad.a){
             setJointPosition(0.26);
         }
 

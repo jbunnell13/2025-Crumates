@@ -48,12 +48,20 @@ public class RobotAutoDriveOnly extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+
         drive = new Mecanum(hardwareMap);
         drive.setTelemetry(telemetry);
         drive.setDriveSpeed(1);
-        drive.update(new Vector2(-0.5, 0), 0);
+
+        waitForStart();
         try {
-            Thread.sleep(500);
+            Thread.sleep(10000);
+        } catch (Exception e){
+
+        }
+        drive.update(new Vector2(0.5, 0), 0);
+        try {
+            Thread.sleep(1500);
         } catch (Exception e){
 
         }
