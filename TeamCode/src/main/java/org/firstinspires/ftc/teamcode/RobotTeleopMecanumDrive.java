@@ -46,7 +46,9 @@ public class RobotTeleopMecanumDrive extends OpMode{
      * Code to run ONCE when the driver hits PLAY
      */
     @Override
-    public void start() {}
+    public void start() {
+        specimanArm.setClawJoint(0.3146);
+    }
 
 
     /*
@@ -67,6 +69,8 @@ public class RobotTeleopMecanumDrive extends OpMode{
             drawer.setJointPosition(gamepad.left_stick_y * 0.5 + 0.5); // in 0.25, out 1
         if(gamepad.b)
             drawer.setClawPosition(gamepad.left_stick_y * 0.5 + 0.5); // open 0, close 0.75
+        if (gamepad.y)
+            specimanArm.setClawJoint(gamepad.left_stick_y * 0.5 + 0.5);
         //if(gamepad.y)
             //specimanArm.setPosition(gamepad.left_stick_y * 0.5 + 0.5);
         telemetry.addData("Servo Position:", gamepad.left_stick_y * 0.5 + 0.5);

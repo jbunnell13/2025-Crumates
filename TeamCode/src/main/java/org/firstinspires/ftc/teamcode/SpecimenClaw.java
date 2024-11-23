@@ -11,13 +11,15 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 public class SpecimenClaw {
 
     // Motor names
-    private Servo leftClawServo, rightClawServo;
+    private Servo leftClawServo, rightClawServo, clawJoint;
     private String LEFT_CLAW_NAME = "leftClaw";
     private String RIGHT_CLAW_NAME = "rightClaw";
+    private String CLAW_JOINT = "clawJoint";
     private boolean aDown, clampDown;
     public SpecimenClaw(HardwareMap hardwareMap){
         leftClawServo = hardwareMap.servo.get(LEFT_CLAW_NAME);
         rightClawServo = hardwareMap.servo.get(RIGHT_CLAW_NAME);
+        clawJoint = hardwareMap.servo.get(CLAW_JOINT);
         aDown=false;
         clampDown=false;
     }
@@ -46,5 +48,9 @@ public class SpecimenClaw {
     public void releaseSpecimen(){
         leftClawServo.setPosition(0.562-0.4);
         rightClawServo.setPosition(0.162+0.4);
+    }
+
+    public void setClawJoint(double d){
+        clawJoint.setPosition(d);
     }
 }

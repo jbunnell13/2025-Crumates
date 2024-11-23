@@ -14,7 +14,7 @@ public class SpecimanArm {
 
     public SpecimanArm(HardwareMap hardwareMap) {
         specimanMotor = hardwareMap.dcMotor.get(SPECIMAN_MOTOR_NAME);
-        specimanMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        specimanMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         claw = new SpecimenClaw(hardwareMap);
     }
 
@@ -27,8 +27,10 @@ public class SpecimanArm {
             --power;
         }
         */
-        update(gamepad.left_stick_y);
+        update(gamepad.left_stick_y * 0.5);
         claw.update(gamepad);
+        if( gamepad.left_bumper) { claw.grabSpecimen(); }
+        else if( gamepad.right_bumper){ claw.releaseSpecimen(); }
     }
 
     public void update(double power) {
@@ -39,4 +41,7 @@ public class SpecimanArm {
 
     public void grabSpeciman(){ claw.grabSpecimen(); }
     public void releaseSpeciman(){ claw.releaseSpecimen(); }
+    public void setClawJoint(double d) {
+        claw.setClawJoint(d);
+    }
 }

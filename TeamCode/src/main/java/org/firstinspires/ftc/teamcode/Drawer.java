@@ -25,7 +25,7 @@ public class Drawer {
     }
 
     public void update(double power) {
-        drawerMotor.setPower(power);
+        drawerMotor.setPower(power * 0.67);
     }
 
     public void setJointPosition(double pos){ claw.setJointPosition(pos); }

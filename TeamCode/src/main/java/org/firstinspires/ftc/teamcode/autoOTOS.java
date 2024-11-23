@@ -55,9 +55,9 @@ public class autoOTOS extends LinearOpMode {
     final double STRAFE_GAIN =  0.15;   // 0.015 Strafe Speed Control "Gain".  eg: Ramp up to 25% power at a 25 degree Yaw error.   (0.25 / 25.0)
     final double TURN_GAIN   =  0.03;   // 0.01 Turn Control "Gain".  eg: Ramp up to 25% power at a 25 degree error. (0.25 / 25.0)
 
-    final double MAX_AUTO_SPEED = 0.4;   //  Clip the approach speed to this max value (adjust for your robot)
-    final double MAX_AUTO_STRAFE= 0.4;   //  Clip the approach speed to this max value (adjust for your robot)
-    final double MAX_AUTO_TURN  = 0.4;   //  Clip the turn speed to this max value (adjust for your robot)
+    final double MAX_AUTO_SPEED = 0.2;   //  Clip the approach speed to this max value (adjust for your robot)
+    final double MAX_AUTO_STRAFE= 0.2;   //  Clip the approach speed to this max value (adjust for your robot)
+    final double MAX_AUTO_TURN  = 0.2;   //  Clip the turn speed to this max value (adjust for your robot)
 
     private ElapsedTime runtime = new ElapsedTime();
     
@@ -76,13 +76,16 @@ public class autoOTOS extends LinearOpMode {
     // This is gearing DOWN for less speed and more torque.
     // For gearing UP, use a gear ratio less than 1.0. Note this will affect the direction of wheel rotation.
     static final double     COUNTS_PER_MOTOR_REV    = 384.5 * 4;
-    // ^ GoBILDA 5203 Series Yellow Jacket Planetary Gear Motor specs, check page for motor to find number, CPR is PPR * 4
+    // ^ GoBILDA 5203 Series Yellow Jacket Planetary Gear Motor specs, check store page for motor to find number, CPR is PPR * 4
     static final double     DRIVE_GEAR_REDUCTION    = 1.0 ;     // No External Gearing.
     static final double     WHEEL_DIAMETER_INCHES   = 1.5 ;     // use ruler to measure diameter of whatever wheel
     static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
             (WHEEL_DIAMETER_INCHES * Math.PI);
     static final double     SPECIMAN_SPEED             = 0.6; // max power for speciman arm
     static final double     DRAWER_SPEED             = 0.6; // max power for drawer arm
+
+    public static double Linear_Scaler = 20.281/21 * 48.3115/56.0;
+    public static double Angular_Scaler = 1.000;
     
     // Sensors
     private SparkFunOTOS myOtos;        // Optical tracking odometry sensor
@@ -122,6 +125,7 @@ public class autoOTOS extends LinearOpMode {
 
         // Get a reference to the sensor
         myOtos = hardwareMap.get(SparkFunOTOS.class, "SparkFun");
+        pos = myOtos.getPosition();
         // All the configuration for the OTOS is done in this helper method, check it out!
         configureOtos();
         sleep(1000);
@@ -138,6 +142,15 @@ public class autoOTOS extends LinearOpMode {
         telemetry.addData("Status", "Running");
         telemetry.update();
 
+        /*
+        while(opModeIsActive()){
+            pos = myOtos.getPosition();
+            telemetry.addData("Cords:", "X %5.2f, Y %5.2f, Rotation %5.2f", pos.x, pos.y, pos.h);
+            telemetry.update();
+        }
+         */
+        drawerArm(0.5, 15, 5);
+        otosDrive(0,48, 0, 1000, 0.2);
         /*
         otosDrive(2, 2, 0, 2);      // small moveforward and right away from wall
         otosDrive(18, 2, 0, 2);     // forward and push sample into net zone
@@ -159,7 +172,7 @@ public class autoOTOS extends LinearOpMode {
         // set, the default is inches and degrees. Note that this setting is not
         // stored in the sensor, it's part of the library, so you need to set at the
         // start of all your programs.
-        // myOtos.setLinearUnit(DistanceUnit.METER);
+        // myOtos.setLinearUnit(DistanceUnit.CM);
         myOtos.setLinearUnit(DistanceUnit.INCH);
         // myOtos.setAngularUnit(AnguleUnit.RADIANS);
         myOtos.setAngularUnit(AngleUnit.DEGREES);
@@ -194,8 +207,8 @@ public class autoOTOS extends LinearOpMode {
         // multiple speeds to get an average, then set the linear scalar to the
         // inverse of the error. For example, if you move the robot 100 inches and
         // the sensor reports 103 inches, set the linear scalar to 100/103 = 0.971
-        myOtos.setLinearScalar(1.000);
-        myOtos.setAngularScalar(1.000);
+        myOtos.setLinearScalar(Linear_Scaler);
+        myOtos.setAngularScalar(Angular_Scaler);
 
         // The IMU on the OTOS includes a gyroscope and accelerometer, which could
         // have an offset. Note that as of firmware version 1.0, the calibration
@@ -285,12 +298,66 @@ public class autoOTOS extends LinearOpMode {
         telemetry.update();
     }
 
+    /**
+     * Move robot to a designated X,Y position, heading (rotation), and how close to that position
+     * set the maxTime to have the driving logic timeout after a number of seconds.
+     * set error to have the robot move within that many DistanceUnits of given location
+     */
+    void otosDrive(double targetX, double targetY, double targetHeading, double maxTime, double error) {
+        double drive, strafe, turn;
+        double currentRange, targetRange, initialBearing, targetBearing, xError, yError, yawError;
+        double opp, adj;
+
+        SparkFunOTOS.Pose2D currentPos = myPosition();
+        xError = targetX-currentPos.x;
+        yError = targetY-currentPos.y;
+        yawError = targetHeading-currentPos.h;
+
+        runtime.reset();
+
+        while(opModeIsActive() && (runtime.milliseconds() < maxTime*1000) &&
+                ((Math.abs(xError) > error) || (Math.abs(yError) > error) || (Math.abs(yawError) > 4)) ) {
+            // Use the speed and turn "gains" to calculate how we want the robot to move.
+            drive  = Range.clip(xError * SPEED_GAIN, -MAX_AUTO_SPEED, MAX_AUTO_SPEED);
+            strafe = Range.clip(yError * STRAFE_GAIN, -MAX_AUTO_STRAFE, MAX_AUTO_STRAFE);
+            turn   = Range.clip(yawError * TURN_GAIN, -MAX_AUTO_TURN, MAX_AUTO_TURN) ;
+
+            telemetry.addData("Auto","Drive %5.2f, Strafe %5.2f, Turn %5.2f ", drive, strafe, turn);
+            // current x,y swapped due to 90 degree rotation
+            telemetry.addData("current X coordinate", currentPos.x);
+            telemetry.addData("current Y coordinate", currentPos.y);
+            telemetry.addData("current Heading angle", currentPos.h);
+            telemetry.addData("target X coordinate", targetX);
+            telemetry.addData("target Y coordinate", targetY);
+            telemetry.addData("target Heading angle", targetHeading);
+            telemetry.addData("xError", xError);
+            telemetry.addData("yError", yError);
+            telemetry.addData("yawError", yawError);
+            telemetry.update();
+
+            // Apply desired axes motions to the drivetrain.
+            moveRobot(drive, strafe, turn);
+
+            // then recalc error
+            currentPos = myPosition();
+            xError = targetX-currentPos.x;
+            yError = targetY-currentPos.y;
+            yawError = targetHeading-currentPos.h;
+        }
+        moveRobot(0,0,0);
+        currentPos = myPosition();
+        telemetry.addData("current X coordinate", currentPos.x);
+        telemetry.addData("current Y coordinate", currentPos.y);
+        telemetry.addData("current Heading angle", currentPos.h);
+        telemetry.update();
+    }
+
     /* the reported OTOS values are based on sensor orientation, convert to robot centric
         by swapping x and y and changing the sign of the heading
         */
     SparkFunOTOS.Pose2D myPosition() {
         pos = myOtos.getPosition();
-        SparkFunOTOS.Pose2D myPos = new SparkFunOTOS.Pose2D(pos.y, pos.x, -pos.h);
+        SparkFunOTOS.Pose2D myPos = new SparkFunOTOS.Pose2D(pos.x, pos.y, -pos.h);
         return(myPos);
     }
     /**
@@ -299,7 +366,7 @@ public class autoOTOS extends LinearOpMode {
      * Positive Y is strafe right
      * Positive Yaw is clockwise: note this is not how the IMU reports yaw(heading)
      */
-     void moveRobot(double x, double y, double yaw) {
+     void moveRobot(double y, double x, double yaw) {
         
         // Calculate wheel powers.
         double leftFrontPower    =  x +y +yaw;
@@ -324,6 +391,7 @@ public class autoOTOS extends LinearOpMode {
         rightFrontDrive.setPower(rightFrontPower);
         leftBackDrive.setPower(leftBackPower);
         rightBackDrive.setPower(rightBackPower);
+        //screw with the pause timing to see what happens
         sleep(10);
     }
 
@@ -343,7 +411,7 @@ public class autoOTOS extends LinearOpMode {
 
             // reset the timeout time and start motion.
             runtime.reset();
-            drawer.setPower(Math.abs(speed));
+            drawer.setPower(Math.abs(speed * DRAWER_SPEED));
 
             // keep looping while we are still active, and there is time left, and both motors are running.
             // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
@@ -370,7 +438,7 @@ public class autoOTOS extends LinearOpMode {
         }
     }
 
-    public void specimanArm(double speed, double extension, double timeoutS) {
+    public void specimanArm(double speed, double extension, double timeoutS, double endPower) {
         int target;
 
         // Ensure that the OpMode is still active
@@ -385,7 +453,7 @@ public class autoOTOS extends LinearOpMode {
 
             // reset the timeout time and start motion.
             runtime.reset();
-            speciman.setPower(Math.abs(speed));
+            speciman.setPower(Math.abs(speed * SPECIMAN_SPEED));
 
             // keep looping while we are still active, and there is time left, and both motors are running.
             // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
@@ -403,7 +471,7 @@ public class autoOTOS extends LinearOpMode {
             }
 
             // Stop all motion;
-            speciman.setPower(0);
+            speciman.setPower(endPower);
 
             // Turn off RUN_TO_POSITION
             speciman.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
