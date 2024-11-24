@@ -82,9 +82,9 @@ public class Mecanum {
 
         this.update(new Vector2(vectorX, vectorY), rightStickX);
 
-        if(gamepad.dpad_down){
+        if(gamepad.left_trigger){
             driveSpeed = 0.4;
-        } else if (gamepad.dpad_up){
+        } else if (gamepad.right_trigger){
             driveSpeed = 1;
         }
     }
